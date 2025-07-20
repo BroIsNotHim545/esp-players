@@ -9,6 +9,13 @@ local Camera = workspace.CurrentCamera
 -- Create unique identifier for this script instance
 local SCRIPT_ID = "UnstableEye_" .. tostring(math.random(1, 1000000))
 
+-- Clean up previous UI immediately
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+local oldGui = playerGui:FindFirstChild("UnstableEyeCooldown")
+if oldGui then
+    oldGui:Destroy()
+end
+
 -- Pre-download the custom sound
 local customSoundId = nil
 local hasCustomSound = false
@@ -77,30 +84,17 @@ local cooldownBarRef = nil
 local function manageCooldownUI()
     local playerGui = LocalPlayer:WaitForChild("PlayerGui")
     
-    -- Clean up any old UIs from previous instances
+    -- Clean up any old UIs
     for _, gui in ipairs(playerGui:GetChildren()) do
-        if gui.Name == "UnstableEyeCooldown" and (gui:GetAttribute("ScriptID") ~= SCRIPT_ID) then
+        if gui.Name == "UnstableEyeCooldown" then
             gui:Destroy()
         end
     end
     
-    -- Find existing UI with matching ID
-    local cooldownGui = playerGui:FindFirstChild("UnstableEyeCooldown")
-    if cooldownGui and cooldownGui:GetAttribute("ScriptID") == SCRIPT_ID then
-        -- Use existing UI
-        local frame = cooldownGui:FindFirstChild("CooldownFrame")
-        if frame then
-            cooldownTextRef = frame:FindFirstChild("CooldownText")
-            cooldownBarRef = frame:FindFirstChild("CooldownBar")
-        end
-        return
-    end
-    
     -- Create new UI
-    cooldownGui = Instance.new("ScreenGui")
+    local cooldownGui = Instance.new("ScreenGui")
     cooldownGui.Name = "UnstableEyeCooldown"
     cooldownGui.ResetOnSpawn = false
-    cooldownGui:SetAttribute("ScriptID", SCRIPT_ID)
     cooldownGui.Parent = playerGui
     
     local cooldownFrame = Instance.new("Frame")
@@ -203,12 +197,37 @@ local function activateEffect()
     blur.Size = 0
     blur.Parent = Lighting
     
+    -- NEW: Color correction effect
+    local colorCorrection = Instance.new("ColorCorrectionEffect")
+    colorCorrection.Brightness = 0
+    colorCorrection.Contrast = 0
+    colorCorrection.Saturation = 0
+    colorCorrection.TintColor = Color3.fromRGB(255, 150, 150)
+    colorCorrection.Parent = Lighting
+    
+    -- NEW: Bloom effect
+    local bloom = Instance.new("BloomEffect")
+    bloom.Intensity = 0
+    bloom.Size = 24
+    bloom.Threshold = 0.8
+    bloom.Parent = Lighting
+    
     local originalFOV = Camera.FieldOfView
     local fovTween = TweenService:Create(Camera, TweenInfo.new(0.8), {FieldOfView = originalFOV - 15})
     fovTween:Play()
     
     local blurTween = TweenService:Create(blur, TweenInfo.new(0.2), {Size = 60})
     blurTween:Play()
+    
+    -- NEW: Tween color correction and bloom effects
+    local colorTween = TweenService:Create(colorCorrection, TweenInfo.new(0.5), {
+        Contrast = 0.4,
+        Saturation = 0.3
+    })
+    colorTween:Play()
+    
+    local bloomTween = TweenService:Create(bloom, TweenInfo.new(0.5), {Intensity = 1.5})
+    bloomTween:Play()
     
     -- Player highlighting (ESP)
     local highlights = {}
@@ -283,12 +302,33 @@ local function activateEffect()
     local blurOut = TweenService:Create(blur, TweenInfo.new(0.5), {Size = 0})
     blurOut:Play()
     
+    local colorOut = TweenService:Create(colorCorrection, TweenInfo.new(0.5), {
+        Contrast = 0,
+        Saturation = 0
+    })
+    colorOut:Play()
+    
+    local bloomOut = TweenService:Create(bloom, TweenInfo.new(0.5), {Intensity = 0})
+    bloomOut:Play()
+    
     local fovOut = TweenService:Create(Camera, TweenInfo.new(0.5), {FieldOfView = originalFOV})
     fovOut:Play()
     
     blurOut.Completed:Connect(function()
         if blur then
             blur:Destroy()
+        end
+    end)
+    
+    colorOut.Completed:Connect(function()
+        if colorCorrection then
+            colorCorrection:Destroy()
+        end
+    end)
+    
+    bloomOut.Completed:Connect(function()
+        if bloom then
+            bloom:Destroy()
         end
     end)
     
@@ -349,7 +389,7 @@ tool.AncestryChanged:Connect(function(_, parent)
         local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
         if playerGui then
             local cooldownGui = playerGui:FindFirstChild("UnstableEyeCooldown")
-            if cooldownGui and cooldownGui:GetAttribute("ScriptID") == SCRIPT_ID then
+            if cooldownGui then
                 cooldownGui:Destroy()
             end
         end

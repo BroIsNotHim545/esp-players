@@ -10,6 +10,23 @@ local Camera = workspace.CurrentCamera
 -- Create unique identifier for this script instance
 local SCRIPT_ID = "UnstableEye_" .. tostring(math.random(1, 1000000))
 
+-- Pre-download the custom sound
+local customSoundId = nil
+local hasCustomSound = false
+
+-- Only attempt if the environment supports file functions
+if writefile and readfile and isfile and getcustomasset then
+    pcall(function()
+        local url = "https://raw.githubusercontent.com/XQZ-official/Musics/main/Unstable_eyeSFX.mp3"
+        local fileName = "hnngh! I see youuu~.mp3"
+        if not isfile(fileName) then
+            writefile(fileName, game:HttpGet(url))
+        end
+        customSoundId = getcustomasset(fileName)
+        hasCustomSound = true
+    end)
+end
+
 -- Remove any existing tool to prevent duplicates
 for _, item in ipairs(LocalPlayer.Backpack:GetChildren()) do
     if item.Name == "Unstable Eye" then
@@ -160,13 +177,25 @@ local function activateEffect()
     -- Store original walk speed
     originalWalkSpeed = humanoid.WalkSpeed
     
-    -- Play sound effect
+    -- Play sound effect using custom downloaded file
     local sound = Instance.new("Sound")
-    sound.SoundId = "rbxassetid://17897783106"  -- Unstable Eye sound effect
     sound.Volume = 1.5
-    sound.Parent = SoundService
+    sound.Looped = false
+    
+    if hasCustomSound then
+        sound.SoundId = customSoundId
+    else
+        -- Fallback to original sound
+        sound.SoundId = "rbxassetid://17897783106"
+    end
+    
+    sound.Parent = LocalPlayer:WaitForChild("PlayerGui")
     sound:Play()
-    game:GetService("Debris"):AddItem(sound, 10)
+    
+    -- Clean up sound when finished
+    sound.Ended:Connect(function()
+        sound:Destroy()
+    end)
 
     -- Movement effects - FREEZE player
     humanoid.WalkSpeed = 0

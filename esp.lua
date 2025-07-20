@@ -214,7 +214,7 @@ local function activateEffect()
     -- After freeze period, boost speed
     task.wait(0.8)
     if humanoid and humanoid.Parent and humanoid.Health > 0 then
-        humanoid.WalkSpeed = 27
+        humanoid.WalkSpeed = 16
     end
     
     -- Wait for effect duration

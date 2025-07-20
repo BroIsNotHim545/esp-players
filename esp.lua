@@ -10,10 +10,11 @@ local Camera = workspace.CurrentCamera
 local SCRIPT_ID = "UnstableEye_" .. tostring(math.random(1, 1000000))
 
 -- Clean up previous UI immediately
-local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-local oldGui = playerGui:FindFirstChild("UnstableEyeCooldown")
-if oldGui then
-    oldGui:Destroy()
+if LocalPlayer:FindFirstChild("PlayerGui") then
+    local oldGui = LocalPlayer.PlayerGui:FindFirstChild("UnstableEyeCooldown")
+    if oldGui then
+        oldGui:Destroy()
+    end
 end
 
 -- Pre-download the custom sound
@@ -79,6 +80,7 @@ end
 -- UI references
 local cooldownTextRef = nil
 local cooldownBarRef = nil
+local cooldownGui = nil
 
 -- Cooldown indicator management
 local function manageCooldownUI()
@@ -92,7 +94,7 @@ local function manageCooldownUI()
     end
     
     -- Create new UI
-    local cooldownGui = Instance.new("ScreenGui")
+    cooldownGui = Instance.new("ScreenGui")
     cooldownGui.Name = "UnstableEyeCooldown"
     cooldownGui.ResetOnSpawn = false
     cooldownGui.Parent = playerGui
@@ -386,26 +388,22 @@ end)
 tool.AncestryChanged:Connect(function(_, parent)
     if parent == nil then
         -- Clean up cooldown UI when tool is destroyed
-        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-        if playerGui then
-            local cooldownGui = playerGui:FindFirstChild("UnstableEyeCooldown")
-            if cooldownGui then
-                cooldownGui:Destroy()
-            end
+        if cooldownGui and cooldownGui.Parent then
+            cooldownGui:Destroy()
         end
         -- Clear references
         cooldownTextRef = nil
         cooldownBarRef = nil
+        cooldownGui = nil
     end
 end)
 
 -- Update cooldown display continuously
-while true do
-    if cooldownTextRef and cooldownBarRef then
+RunService.Heartbeat:Connect(function()
+    if cooldownTextRef and cooldownBarRef and cooldownGui and cooldownGui.Parent then
         updateCooldown()
     else
         -- Attempt to recreate UI if missing
         manageCooldownUI()
     end
-    task.wait(0.1)
-end
+end)

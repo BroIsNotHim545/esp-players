@@ -230,11 +230,11 @@ local function activateEffect()
                         local existing = targetChar:FindFirstChild("ESPHighlight")
                         if existing then existing:Destroy() end
                         
-                        -- Create highlight
+                        -- Create highlight with new colors
                         local highlight = Instance.new("Highlight")
                         highlight.Name = "ESPHighlight"
-                        highlight.FillColor = Color3.fromRGB(255, 215, 0)  -- Gold color
-                        highlight.OutlineColor = Color3.fromRGB(255, 165, 0)  -- Orange outline
+                        highlight.FillColor = Color3.new(1, 1, 0)       -- Bright yellow
+                        highlight.OutlineColor = Color3.new(0.7, 0.7, 0) -- Darker yellow outline
                         highlight.FillTransparency = 1
                         highlight.OutlineTransparency = 1
                         highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
@@ -258,7 +258,7 @@ local function activateEffect()
     -- After freeze period, boost speed
     task.wait(0.8)
     if humanoid and humanoid.Parent and humanoid.Health > 0 then
-        humanoid.WalkSpeed = 16
+        humanoid.WalkSpeed = 27
     end
     
     -- Wait for effect duration

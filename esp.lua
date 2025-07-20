@@ -74,6 +74,7 @@ local function manageCooldownUI()
         cooldownGui.Parent = playerGui
         
         local cooldownFrame = Instance.new("Frame")
+        cooldownFrame.Name = "CooldownFrame"
         cooldownFrame.Size = UDim2.new(0, 200, 0, 40)
         cooldownFrame.Position = UDim2.new(0.5, -100, 0.9, -20)
         cooldownFrame.BackgroundTransparency = 0.7
@@ -82,6 +83,7 @@ local function manageCooldownUI()
         cooldownFrame.Parent = cooldownGui
         
         local cooldownText = Instance.new("TextLabel")
+        cooldownText.Name = "CooldownText"
         cooldownText.Size = UDim2.new(1, 0, 1, 0)
         cooldownText.BackgroundTransparency = 1
         cooldownText.Text = "Unstable Eye: READY"
@@ -91,38 +93,51 @@ local function manageCooldownUI()
         cooldownText.Parent = cooldownFrame
         
         local cooldownBar = Instance.new("Frame")
+        cooldownBar.Name = "CooldownBar"
         cooldownBar.Size = UDim2.new(0, 0, 0, 6)
         cooldownBar.Position = UDim2.new(0, 0, 1, 0)
         cooldownBar.BackgroundColor3 = Color3.new(0.8, 0.2, 0.2)
         cooldownBar.BorderSizePixel = 0
         cooldownBar.Parent = cooldownFrame
     end
-    
-    return cooldownGui
 end
 
--- Get or create cooldown UI
-local cooldownGui = manageCooldownUI()
-local cooldownFrame = cooldownGui:FindFirstChild("Frame")
-local cooldownText = cooldownFrame and cooldownFrame:FindFirstChild("TextLabel")
-local cooldownBar = cooldownFrame and cooldownFrame:FindFirstChild("Frame")
+-- Get UI elements dynamically
+local function getCooldownElements()
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not playerGui then return end
+    
+    local cooldownGui = playerGui:FindFirstChild("UnstableEyeCooldown")
+    if not cooldownGui then return end
+    
+    local cooldownFrame = cooldownGui:FindFirstChild("CooldownFrame")
+    if not cooldownFrame then return end
+    
+    return {
+        Text = cooldownFrame:FindFirstChild("CooldownText"),
+        Bar = cooldownFrame:FindFirstChild("CooldownBar")
+    }
+end
 
 -- Update cooldown display
 local function updateCooldown()
-    if not cooldownText or not cooldownBar then return end
+    local elements = getCooldownElements()
+    if not elements or not elements.Text or not elements.Bar then 
+        return 
+    end
     
     local remaining = cooldownEnd - os.clock()
     
     if remaining > 0 then
         local progress = remaining / COOLDOWN
-        cooldownBar.Size = UDim2.new(progress, 0, 0, 6)
-        cooldownText.Text = string.format("Unstable Eye: %d SEC", math.ceil(remaining))
-        cooldownText.TextColor3 = Color3.new(1, 0.5, 0.5)
+        elements.Bar.Size = UDim2.new(progress, 0, 0, 6)
+        elements.Text.Text = string.format("Unstable Eye: %d SEC", math.ceil(remaining))
+        elements.Text.TextColor3 = Color3.new(1, 0.5, 0.5)
         return true -- Still on cooldown
     else
-        cooldownBar.Size = UDim2.new(0, 0, 0, 6)
-        cooldownText.Text = "Unstable Eye: READY"
-        cooldownText.TextColor3 = Color3.new(0.5, 1, 0.5)
+        elements.Bar.Size = UDim2.new(0, 0, 0, 6)
+        elements.Text.Text = "Unstable Eye: READY"
+        elements.Text.TextColor3 = Color3.new(0.5, 1, 0.5)
         return false -- Not on cooldown
     end
 end
@@ -262,6 +277,9 @@ local function activateEffect()
     end
 end
 
+-- Create initial UI
+manageCooldownUI()
+
 -- Activate when tool is equipped (taken in hand)
 tool.Equipped:Connect(function()
     activateEffect()
@@ -301,8 +319,12 @@ end)
 tool.AncestryChanged:Connect(function(_, parent)
     if parent == nil then
         -- Clean up cooldown UI when tool is destroyed
-        if cooldownGui and cooldownGui.Parent then
-            cooldownGui:Destroy()
+        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+        if playerGui then
+            local cooldownGui = playerGui:FindFirstChild("UnstableEyeCooldown")
+            if cooldownGui and cooldownGui:GetAttribute("ScriptID") == SCRIPT_ID then
+                cooldownGui:Destroy()
+            end
         end
     end
 end)

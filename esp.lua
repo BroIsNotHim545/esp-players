@@ -60,6 +60,8 @@ toolIcon.Parent = tool
 local COOLDOWN = 15
 local cooldownEnd = 0
 local originalWalkSpeed = 16 -- Default walk speed
+local effectActive = false
+local effectHumanoid = nil
 
 -- Get the player's current walk speed
 if LocalPlayer.Character then
@@ -129,6 +131,8 @@ local function manageCooldownUI()
     -- Set references
     cooldownTextRef = cooldownText
     cooldownBarRef = cooldownBar
+    
+    return true
 end
 
 -- Update cooldown display
@@ -153,20 +157,34 @@ local function updateCooldown()
     end
 end
 
+-- Reset walk speed safely
+local function resetWalkSpeed()
+    if effectActive and effectHumanoid and effectHumanoid.Parent and effectHumanoid.Health > 0 then
+        effectHumanoid.WalkSpeed = originalWalkSpeed
+    end
+    effectActive = false
+    effectHumanoid = nil
+end
+
 -- Effect activation function
 local function activateEffect()
-    if updateCooldown() or not LocalPlayer.Character then 
+    if effectActive or updateCooldown() or not LocalPlayer.Character then 
         return 
     end
     
+    effectActive = true
     cooldownEnd = os.clock() + COOLDOWN
     
     local character = LocalPlayer.Character
     local humanoid = getHumanoid(character)
     
     if not humanoid or humanoid.Health <= 0 then 
+        effectActive = false
         return 
     end
+    
+    -- Store reference to current humanoid
+    effectHumanoid = humanoid
     
     -- Store original walk speed
     originalWalkSpeed = humanoid.WalkSpeed
@@ -199,7 +217,7 @@ local function activateEffect()
     blur.Size = 0
     blur.Parent = Lighting
     
-    -- NEW: Color correction effect
+    -- Color correction effect
     local colorCorrection = Instance.new("ColorCorrectionEffect")
     colorCorrection.Brightness = 0
     colorCorrection.Contrast = 0
@@ -207,7 +225,7 @@ local function activateEffect()
     colorCorrection.TintColor = Color3.fromRGB(255, 150, 150)
     colorCorrection.Parent = Lighting
     
-    -- NEW: Bloom effect
+    -- Bloom effect
     local bloom = Instance.new("BloomEffect")
     bloom.Intensity = 0
     bloom.Size = 24
@@ -221,7 +239,7 @@ local function activateEffect()
     local blurTween = TweenService:Create(blur, TweenInfo.new(0.2), {Size = 60})
     blurTween:Play()
     
-    -- NEW: Tween color correction and bloom effects
+    -- Tween color correction and bloom effects
     local colorTween = TweenService:Create(colorCorrection, TweenInfo.new(0.5), {
         Contrast = 0.4,
         Saturation = 0.3
@@ -276,8 +294,8 @@ local function activateEffect()
 
     -- After freeze period, boost speed
     task.wait(0.8)
-    if humanoid and humanoid.Parent and humanoid.Health > 0 then
-        humanoid.WalkSpeed = 27
+    if effectHumanoid and effectHumanoid.Parent and effectHumanoid.Health > 0 then
+        effectHumanoid.WalkSpeed = 27
     end
     
     -- Wait for effect duration
@@ -334,16 +352,16 @@ local function activateEffect()
         end
     end)
     
-    -- Reset walkspeed after boost period (0.8s freeze + 7.5s boost = 8.3s total)
-    task.wait(3.5) -- Total movement effect time: 0.8s + 7.5s = 8.3s
-    if humanoid and humanoid.Parent and humanoid.Health > 0 then
-        humanoid.WalkSpeed = originalWalkSpeed
-    end
+    -- Reset walkspeed after boost period
+    task.wait(3.5)
+    resetWalkSpeed()
     
     -- Unequip the tool after activation
     if tool.Parent == LocalPlayer.Character then
         tool.Parent = LocalPlayer.Backpack
     end
+    
+    effectActive = false
 end
 
 -- Create initial UI
@@ -356,6 +374,9 @@ end)
 
 -- Handle character changes
 LocalPlayer.CharacterAdded:Connect(function(char)
+    -- Reset walk speed in case effect was active
+    resetWalkSpeed()
+    
     -- Remove existing tool if any
     for _, item in ipairs(LocalPlayer.Backpack:GetChildren()) do
         if item.Name == "Unstable Eye" then
@@ -391,6 +412,10 @@ tool.AncestryChanged:Connect(function(_, parent)
         if cooldownGui and cooldownGui.Parent then
             cooldownGui:Destroy()
         end
+        
+        -- Reset walk speed if effect was active
+        resetWalkSpeed()
+        
         -- Clear references
         cooldownTextRef = nil
         cooldownBarRef = nil
@@ -400,10 +425,10 @@ end)
 
 -- Update cooldown display continuously
 RunService.Heartbeat:Connect(function()
-    if cooldownTextRef and cooldownBarRef and cooldownGui and cooldownGui.Parent then
+    if tool and tool.Parent and cooldownTextRef and cooldownBarRef then
         updateCooldown()
     else
         -- Attempt to recreate UI if missing
-        manageCooldownUI()
+        pcall(manageCooldownUI)
     end
 end)

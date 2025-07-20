@@ -1,7 +1,6 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
-local SoundService = game:GetService("SoundService")
 local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
@@ -70,91 +69,90 @@ local function getRootPart(character)
     return character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
 end
 
+-- UI references
+local cooldownTextRef = nil
+local cooldownBarRef = nil
+
 -- Cooldown indicator management
 local function manageCooldownUI()
     local playerGui = LocalPlayer:WaitForChild("PlayerGui")
     
     -- Clean up any old UIs from previous instances
     for _, gui in ipairs(playerGui:GetChildren()) do
-        if gui.Name == "UnstableEyeCooldown" and gui:GetAttribute("ScriptID") ~= SCRIPT_ID then
+        if gui.Name == "UnstableEyeCooldown" and (gui:GetAttribute("ScriptID") ~= SCRIPT_ID) then
             gui:Destroy()
         end
     end
     
-    -- Create new UI only if it doesn't exist
+    -- Find existing UI with matching ID
     local cooldownGui = playerGui:FindFirstChild("UnstableEyeCooldown")
-    if not cooldownGui then
-        cooldownGui = Instance.new("ScreenGui")
-        cooldownGui.Name = "UnstableEyeCooldown"
-        cooldownGui.ResetOnSpawn = false
-        cooldownGui:SetAttribute("ScriptID", SCRIPT_ID)
-        cooldownGui.Parent = playerGui
-        
-        local cooldownFrame = Instance.new("Frame")
-        cooldownFrame.Name = "CooldownFrame"
-        cooldownFrame.Size = UDim2.new(0, 200, 0, 40)
-        cooldownFrame.Position = UDim2.new(0.5, -100, 0.9, -20)
-        cooldownFrame.BackgroundTransparency = 0.7
-        cooldownFrame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
-        cooldownFrame.BorderSizePixel = 0
-        cooldownFrame.Parent = cooldownGui
-        
-        local cooldownText = Instance.new("TextLabel")
-        cooldownText.Name = "CooldownText"
-        cooldownText.Size = UDim2.new(1, 0, 1, 0)
-        cooldownText.BackgroundTransparency = 1
-        cooldownText.Text = "Unstable Eye: READY"
-        cooldownText.TextColor3 = Color3.new(0.5, 1, 0.5)
-        cooldownText.Font = Enum.Font.GothamBold
-        cooldownText.TextSize = 18
-        cooldownText.Parent = cooldownFrame
-        
-        local cooldownBar = Instance.new("Frame")
-        cooldownBar.Name = "CooldownBar"
-        cooldownBar.Size = UDim2.new(0, 0, 0, 6)
-        cooldownBar.Position = UDim2.new(0, 0, 1, 0)
-        cooldownBar.BackgroundColor3 = Color3.new(0.8, 0.2, 0.2)
-        cooldownBar.BorderSizePixel = 0
-        cooldownBar.Parent = cooldownFrame
+    if cooldownGui and cooldownGui:GetAttribute("ScriptID") == SCRIPT_ID then
+        -- Use existing UI
+        local frame = cooldownGui:FindFirstChild("CooldownFrame")
+        if frame then
+            cooldownTextRef = frame:FindFirstChild("CooldownText")
+            cooldownBarRef = frame:FindFirstChild("CooldownBar")
+        end
+        return
     end
-end
-
--- Get UI elements dynamically
-local function getCooldownElements()
-    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not playerGui then return end
     
-    local cooldownGui = playerGui:FindFirstChild("UnstableEyeCooldown")
-    if not cooldownGui then return end
+    -- Create new UI
+    cooldownGui = Instance.new("ScreenGui")
+    cooldownGui.Name = "UnstableEyeCooldown"
+    cooldownGui.ResetOnSpawn = false
+    cooldownGui:SetAttribute("ScriptID", SCRIPT_ID)
+    cooldownGui.Parent = playerGui
     
-    local cooldownFrame = cooldownGui:FindFirstChild("CooldownFrame")
-    if not cooldownFrame then return end
+    local cooldownFrame = Instance.new("Frame")
+    cooldownFrame.Name = "CooldownFrame"
+    cooldownFrame.Size = UDim2.new(0, 200, 0, 40)
+    cooldownFrame.Position = UDim2.new(0.5, -100, 0.9, -20)
+    cooldownFrame.BackgroundTransparency = 0.7
+    cooldownFrame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+    cooldownFrame.BorderSizePixel = 0
+    cooldownFrame.Parent = cooldownGui
     
-    return {
-        Text = cooldownFrame:FindFirstChild("CooldownText"),
-        Bar = cooldownFrame:FindFirstChild("CooldownBar")
-    }
+    local cooldownText = Instance.new("TextLabel")
+    cooldownText.Name = "CooldownText"
+    cooldownText.Size = UDim2.new(1, 0, 1, 0)
+    cooldownText.BackgroundTransparency = 1
+    cooldownText.Text = "Unstable Eye: READY"
+    cooldownText.TextColor3 = Color3.new(0.5, 1, 0.5)
+    cooldownText.Font = Enum.Font.GothamBold
+    cooldownText.TextSize = 18
+    cooldownText.Parent = cooldownFrame
+    
+    local cooldownBar = Instance.new("Frame")
+    cooldownBar.Name = "CooldownBar"
+    cooldownBar.Size = UDim2.new(0, 0, 0, 6)
+    cooldownBar.Position = UDim2.new(0, 0, 1, 0)
+    cooldownBar.BackgroundColor3 = Color3.new(0.8, 0.2, 0.2)
+    cooldownBar.BorderSizePixel = 0
+    cooldownBar.Parent = cooldownFrame
+    
+    -- Set references
+    cooldownTextRef = cooldownText
+    cooldownBarRef = cooldownBar
 end
 
 -- Update cooldown display
 local function updateCooldown()
-    local elements = getCooldownElements()
-    if not elements or not elements.Text or not elements.Bar then 
-        return 
+    if not cooldownTextRef or not cooldownBarRef then 
+        return false
     end
     
     local remaining = cooldownEnd - os.clock()
     
     if remaining > 0 then
         local progress = remaining / COOLDOWN
-        elements.Bar.Size = UDim2.new(progress, 0, 0, 6)
-        elements.Text.Text = string.format("Unstable Eye: %d SEC", math.ceil(remaining))
-        elements.Text.TextColor3 = Color3.new(1, 0.5, 0.5)
+        cooldownBarRef.Size = UDim2.new(progress, 0, 0, 6)
+        cooldownTextRef.Text = string.format("Unstable Eye: %d SEC", math.ceil(remaining))
+        cooldownTextRef.TextColor3 = Color3.new(1, 0.5, 0.5)
         return true -- Still on cooldown
     else
-        elements.Bar.Size = UDim2.new(0, 0, 0, 6)
-        elements.Text.Text = "Unstable Eye: READY"
-        elements.Text.TextColor3 = Color3.new(0.5, 1, 0.5)
+        cooldownBarRef.Size = UDim2.new(0, 0, 0, 6)
+        cooldownTextRef.Text = "Unstable Eye: READY"
+        cooldownTextRef.TextColor3 = Color3.new(0.5, 1, 0.5)
         return false -- Not on cooldown
     end
 end
@@ -355,11 +353,19 @@ tool.AncestryChanged:Connect(function(_, parent)
                 cooldownGui:Destroy()
             end
         end
+        -- Clear references
+        cooldownTextRef = nil
+        cooldownBarRef = nil
     end
 end)
 
 -- Update cooldown display continuously
 while true do
-    updateCooldown()
+    if cooldownTextRef and cooldownBarRef then
+        updateCooldown()
+    else
+        -- Attempt to recreate UI if missing
+        manageCooldownUI()
+    end
     task.wait(0.1)
 end
